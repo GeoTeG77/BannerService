@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .welcome-message {
+            margin: 2em 0;
+            font-size: 24px;
+        }
+        .banner-container {
+            display: flex;
+            justify-content: center;
+            gap: 1em;
+        }
+        .banner {
+            background-color: #fff;
+            padding: 1em;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            width: 200px;
+        }
+        .banner img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 0.1em;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.1em 0;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-message">
+        Приветствую, <span id="username">user</span>!
+    </div>
+    <div class="banner-container">
+        <div class="banner">
+            <img src="https://example.com/image1.jpg" alt="Banner 1">
+            <p>Баннер 1</p>
+        </div>
+        <div class="banner">
+            <img src="https://example.com/image2.jpg" alt="Banner 2">
+            <p>Баннер 2</p>
+        </div>
+        <div class="banner">
+            <img src="https://example.com/image3.jpg" alt="Banner 3">
+            <p>Баннер 3</p>
+        </div>
+ 
+    </div>  
+    </form>
+    <form action="/" method="get">
+        <button type="submit">Back to Main</button>
+    </form>
+</form>
+<form action="/logout" method="get">
+   <button type="submit">Logout</button>
+</form>
+</body>
+</html>

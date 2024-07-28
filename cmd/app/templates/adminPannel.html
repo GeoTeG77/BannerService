@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .update-container {
+            background-color: #fff;
+            padding: 2em;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.5em;
+            margin: 0.5em 0;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="update-container">
+        <h2>Admin Panel</h2>
+
+        <h3>Banner</h3>
+        <form action="/create-banner" method="post">
+            <button type="submit">Create Banner</button>
+        </form>
+        
+        <form action="/get-banner" method="post">
+            <button type="submit">Get Banner</button>
+        </form>
+        
+        <form action="/get-banners" method="post">
+            <button type="submit">Get Banners</button>
+        </form>
+       
+        <form action="/update-banner" method="post">
+            <button type="submit">Update Banner</button>
+        </form>
+        
+        <form action="/delete-banner" method="post">
+            <button type="submit">Delete Banner</button>
+        </form>
+
+        <h3>Feature</h3>
+        <form action="/create-feature" method="post">
+            <button type="submit">Create Feature</button>
+        </form>
+
+        <form action="/update-feature" method="post">
+            <button type="submit">Update Feature</button>
+        </form>
+       
+        <form action="/delete-feature" method="post">
+            <button type="submit">Delete Feature</button>
+        </form>
+    
+        <h3>Tag</h3>
+        <form action="/create-tag" method="post">
+            <button type="submit">Create Tag</button>
+        </form>
+
+        <form action="/update-tag" method="post">
+            <button type="submit">Update Tag</button>
+        </form>
+       
+        <form action="/delete-tag" method="post">
+            <button type="submit">Delete Tag</button>
+        </form>
+
+        <h3>Logout</h3>
+        <form action="/logout" method="get">
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+</body>
+</html>
