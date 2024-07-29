@@ -138,16 +138,16 @@ func CreateToken(claim *CustomClaim) (string, error) {
 	return tokenString, nil
 }
 
-func ValidateToken(tokenStr string) (*CustomClaim, error) {
+func ValidateToken(tokenStr string) (*CustomClaim, string, error) {
 	claims := &CustomClaim{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtSecret, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil,"", err
 	}
 	if !token.Valid {
-		return nil, jwt.ErrSignatureInvalid
+		return nil,"", jwt.ErrSignatureInvalid
 	}
-	return claims, nil
+	return claims,claims.IsAdmin, nil
 }

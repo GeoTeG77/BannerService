@@ -2,13 +2,15 @@ package main
 
 import (
 	"BannerService/cmd/internal/config"
+	admin "BannerService/cmd/internal/http-server/handlers/url/admin"
 	banner "BannerService/cmd/internal/http-server/handlers/url/banner"
 	feature "BannerService/cmd/internal/http-server/handlers/url/feature"
 	"BannerService/cmd/internal/http-server/handlers/url/password"
-	auth "BannerService/cmd/internal/http-server/middleware/auth"
-
-	//"BannerService/cmd/internal/http-server/handlers/url/password"
 	tag "BannerService/cmd/internal/http-server/handlers/url/tag"
+	user "BannerService/cmd/internal/http-server/handlers/url/user"
+	auth "BannerService/cmd/internal/http-server/middleware/auth"
+	role "BannerService/cmd/internal/http-server/middleware/role"
+	templates "BannerService/cmd/internal/templates"
 
 	//"BannerService/cmd/internal/lib/logger/sl"
 	"BannerService/cmd/internal/storage/sqlite"
@@ -34,7 +36,8 @@ func main() {
 	log := setupLogger(cfg.Env)
 	log.Info("debug messages are enabled", slog.String("env", cfg.Env))
 
-	auth.LoadTemplates()
+	templates.LoadTemplates()
+
 	storage, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
 		log.Error("failed to init storage")
@@ -61,20 +64,32 @@ func main() {
 		r.Use(middleware.Recoverer)
 		r.Use(middleware.URLFormat)
 
-		r.Post("/banner", banner.SetBanner(log, storage))
-		r.Post("/tag", tag.CreateTag(log, storage))
-		r.Post("/feature", feature.CreateFeature(log, storage))
+		r.Route("/user", func(r chi.Router) {
+			r.Use(role.IsAdmin)
+			r.Get("/", user.UserPage)
+			r.Get("/user_banner", banner.GetBanner(log, storage))
+		})
 
-		r.Patch("/banner/{id}", banner.UpdateBanner(log, storage))
-		r.Patch("/feature/{id}/{name}", feature.UpdateFeatureName(log, storage))
-		r.Patch("/tag/{id}/{name}", tag.UpdateTagName(log, storage))
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(role.IsAdmin)
 
-		r.Get("/user_banner", banner.GetBanner(log, storage))
-		r.Get("/banner", banner.GetBanners(log, storage))
+			r.Get("/", admin.AdminPage)
 
-		r.Delete("/banner/{id}", banner.DeleteBanner(log, storage))
-		r.Delete("/tag/{id}", tag.DeleteTag(log, storage))
-		r.Delete("/feature/{id}", feature.DeleteFeature(log, storage))
+			r.Post("/banner", banner.SetBanner(log, storage))
+			r.Post("/tag", tag.CreateTag(log, storage))
+			r.Post("/feature", feature.CreateFeature(log, storage))
+
+			r.Patch("/banner/{id}", banner.UpdateBanner(log, storage))
+			r.Patch("/feature/{id}/{name}", feature.UpdateFeatureName(log, storage))
+			r.Patch("/tag/{id}/{name}", tag.UpdateTagName(log, storage))
+
+			r.Get("/user_banner", banner.GetBanner(log, storage))
+			r.Get("/banner", banner.GetBanners(log, storage))
+
+			r.Delete("/banner/{id}", banner.DeleteBanner(log, storage))
+			r.Delete("/tag/{id}", tag.DeleteTag(log, storage))
+			r.Delete("/feature/{id}", feature.DeleteFeature(log, storage))
+		})
 	})
 
 	log.Info("starting server", slog.String("address", cfg.Address))

@@ -5,24 +5,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"time"
+	templates "BannerService/cmd/internal/templates"
 )
 
-var Tmpl *template.Template
 
 type CreateUser struct {
 	UserName       string `json:"username"`
 	Password       string `json:"password"`
 	UseLastVersion string `json:"use_last_revision"`
 	IsAdmin        string `json:"is_admin"`
-}
-
-func LoadTemplates() {
-	Tmpl = template.Must(template.ParseGlob(filepath.Join("cmd", "app", "templates", "*.html")))
 }
 
 func AuthMiddleware(next http.Handler) http.Handler {
@@ -34,7 +28,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		stringCookie := cookie.Value
-		_, err = password.ValidateToken(stringCookie)
+		_,_, err = password.ValidateToken(stringCookie)
 		if err != nil {
 			http.Redirect(w, r, "/", http.StatusUnauthorized)
 			return
@@ -45,7 +39,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 func LoginPageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := Tmpl.ExecuteTemplate(w, "login.html", nil)
+	err := templates.Tmpl.ExecuteTemplate(w, "login.html", nil)
 	if err != nil {
 		http.Error(w, "Unable to load template", http.StatusInternalServerError)
 	}
@@ -71,7 +65,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func RegisterPageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := Tmpl.ExecuteTemplate(w, "register.html", nil)
+	err := templates.Tmpl.ExecuteTemplate(w, "register.html", nil)
 	if err != nil {
 		http.Error(w, "Unable to load template", http.StatusInternalServerError)
 	}
