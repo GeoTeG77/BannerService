@@ -2,6 +2,7 @@ package feature
 
 import (
 	resp "BannerService/cmd/internal/lib/api/response"
+	templates "BannerService/cmd/internal/templates"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -18,6 +19,12 @@ type Feature interface {
 func CreateFeature(log *slog.Logger, FeatureImpl Feature) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.CreateFeature"
+
+		err := templates.Tmpl.ExecuteTemplate(w, "createFeature.html", nil)
+		if err != nil {
+			http.Error(w, "Unable to load template", http.StatusInternalServerError)
+		}
+
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 		name := r.URL.Query().Get("id")
 		//fix this
@@ -34,6 +41,13 @@ func CreateFeature(log *slog.Logger, FeatureImpl Feature) http.HandlerFunc {
 func UpdateFeatureName(log *slog.Logger, FeatureImpl Feature) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.UpdateFeatureName"
+
+		err := templates.Tmpl.ExecuteTemplate(w, "updateFeature.html", nil)
+		if err != nil {
+			http.Error(w, "Unable to load template", http.StatusInternalServerError)
+		}
+
+
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 		feature_id := r.URL.Query().Get("id")
 		name := r.URL.Query().Get("name")
@@ -52,6 +66,12 @@ func UpdateFeatureName(log *slog.Logger, FeatureImpl Feature) http.HandlerFunc {
 func DeleteFeature(log *slog.Logger, FeatureImpl Feature) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.CreateFeature"
+
+		err := templates.Tmpl.ExecuteTemplate(w, "updateFeature.html", nil)
+		if err != nil {
+			http.Error(w, "Unable to load template", http.StatusInternalServerError)
+		}
+		
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 		feature_id := r.URL.Query().Get("id")
 		feature_id32, err := strconv.Atoi(feature_id)

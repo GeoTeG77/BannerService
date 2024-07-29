@@ -3,8 +3,11 @@ package banner
 import (
 	resp "BannerService/cmd/internal/lib/api/response"
 	"BannerService/cmd/internal/lib/logger/sl"
+	templates "BannerService/cmd/internal/templates"
 	"log/slog"
 	"net/http"
+
+	//"os/exec"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -41,10 +44,10 @@ type GetBannerRequest struct {
 }
 
 type GetBannersRequest struct {
-	Tag_id           *int64
-	Feature_id       *int64
-	Limit 			 *int64
-	Offset			 *int64
+	Tag_id     *int64
+	Feature_id *int64
+	Limit      *int64
+	Offset     *int64
 }
 
 type GetBannersResponce struct {
@@ -53,8 +56,8 @@ type GetBannersResponce struct {
 	Feature_id *int64   `json:"feature_id,omitempty"`
 	Content    *Content `json:"content,omitempty"`
 	Is_active  *bool    `json:"is_active" validate:"required"`
-	Created_at  *string  `json:"created_at"`
-	Updated_at *string `json:"upadated_at"`
+	Created_at *string  `json:"created_at"`
+	Updated_at *string  `json:"upadated_at"`
 }
 
 type Response struct {
@@ -74,6 +77,15 @@ type Banner interface {
 	DeleteBanner(id int64) (Response, error)
 }
 
+func SetBannerPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := templates.Tmpl.ExecuteTemplate(w, "setBanner.html", nil)
+	if err != nil {
+		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+	}
+
+	//JSON и редерект в SET BANNER () POST /banner
+}
 
 func SetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,18 +116,30 @@ func SetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 
 			return
 		}
-		_, err = Banner.CreateBanner(BannerImpl, req) 
+		_, err = Banner.CreateBanner(BannerImpl, req)
 		if err != nil {
 			log.Error("failed")
 		}
 	}
 }
-/// Поправить UpdateBanner исправить через URL параметр и sqlite соответственно!!!!
+
+// / Поправить UpdateBanner исправить через URL параметр и sqlite соответственно!!!!
+func UpdateBannerPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := templates.Tmpl.ExecuteTemplate(w, "update.html", nil)
+	if err != nil {
+		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+	}
+
+	//JSON и редерект в SET BANNER () POST /banner
+}
+
 func UpdateBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.UpdateBanner"
+
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
-		
+
 		var req UpdateRequest
 
 		err := render.DecodeJSON(r.Body, &req)
@@ -148,9 +172,21 @@ func UpdateBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	}
 }
 
+// / Поправить UpdateBanner исправить через URL параметр и sqlite соответственно!!!!
+func GetBannerPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := templates.Tmpl.ExecuteTemplate(w, "getBanner.html", nil)
+	if err != nil {
+		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+	}
+
+	//JSON и редерект в SET BANNER () POST /banner
+}
+
 func GetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.GetBanner"
+
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 		var req GetBannerRequest
 
@@ -179,11 +215,22 @@ func GetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	}
 }
 
+func GetBannersPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := templates.Tmpl.ExecuteTemplate(w, "getBanners.html", nil)
+	if err != nil {
+		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+	}
+
+	//JSON и редерект в SET BANNER () POST /banner
+}
+
 func GetBanners(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.GetBanners"
+
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
-		
+
 		var req GetBannersRequest
 
 		tag_id := r.URL.Query().Get("tag_id")
@@ -222,13 +269,22 @@ func GetBanners(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 		if err != nil {
 			log.Error("db error")
 		}
-		_=res
-	
+		_ = res
 
 	}
 }
 
-func DeleteBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc{
+func DeleteBannerPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := templates.Tmpl.ExecuteTemplate(w, "deleteBanner.html", nil)
+	if err != nil {
+		http.Error(w, "Unable to load template", http.StatusInternalServerError)
+	}
+
+	//JSON и редерект в SET BANNER () POST /banner
+}
+
+func DeleteBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.DeleteBanner"
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
@@ -239,11 +295,11 @@ func DeleteBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc{
 		}
 		id64 := int64(limit)
 
-		res,err := Banner.DeleteBanner(BannerImpl,id64)
+		res, err := Banner.DeleteBanner(BannerImpl, id64)
 		if err != nil {
 			log.Error("db error")
-		_=res
+			_ = res
 
+		}
 	}
-}
 }

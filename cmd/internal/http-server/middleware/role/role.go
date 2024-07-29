@@ -14,18 +14,18 @@ func IsAdmin(next http.Handler) http.Handler {
 		}
 
 		stringCookie := cookie.Value
-		_,isAdmin, err := password.ValidateToken(stringCookie)
+		_, isAdmin, err := password.ValidateToken(stringCookie)
 		if err != nil {
 			http.Redirect(w, r, "/", http.StatusUnauthorized)
 			return
 		}
-		if isAdmin =="0"{
-			http.Redirect(w, r, "/user", http.StatusUnauthorized)
+		if isAdmin == "0" {
+			http.Redirect(w, r, "/ban", http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
-		
-		if isAdmin =="1"{
+
+		if isAdmin == "1" {
 			http.Redirect(w, r, "/admin", http.StatusUnauthorized)
 			return
 		}

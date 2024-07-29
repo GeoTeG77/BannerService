@@ -81,7 +81,7 @@ func CheckPassword(log *slog.Logger, PasswordManager PasswordManager) http.Handl
 		
 	switch isAdmin{
 	case "0":
-		http.Redirect(w,r, "/user", http.StatusSeeOther )
+		http.Redirect(w,r, "/ban", http.StatusSeeOther )
 	case "1":
 		http.Redirect(w,r, "/admin",  http.StatusSeeOther )
 	}

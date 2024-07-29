@@ -2,15 +2,13 @@ package auth
 
 import (
 	password "BannerService/cmd/internal/http-server/handlers/url/password"
+	templates "BannerService/cmd/internal/templates"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
-	templates "BannerService/cmd/internal/templates"
 )
-
 
 type CreateUser struct {
 	UserName       string `json:"username"`
@@ -28,7 +26,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		stringCookie := cookie.Value
-		_,_, err = password.ValidateToken(stringCookie)
+		_, _, err = password.ValidateToken(stringCookie)
 		if err != nil {
 			http.Redirect(w, r, "/", http.StatusUnauthorized)
 			return
@@ -118,14 +116,12 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	cookie := &http.Cookie{
-		Name:     "banner_token",
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Unix(0, 0),
-		MaxAge:   -1,
-		HttpOnly: true,
-	}
-	http.SetCookie(w, cookie)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:   "banner_token",
+		Value:  "",
+		MaxAge: -1,
+	})
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

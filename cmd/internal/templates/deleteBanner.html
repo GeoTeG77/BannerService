@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Banner</title>
+    <title>Create Feature</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,14 +14,15 @@
             margin: 0;
             background-color: #f4f4f4;
         }
-        .update-container {
+        .form-container {
             background-color: #fff;
             padding: 2em;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             text-align: center;
+            width: 300px;
         }
-        input, select, textarea {
+        input, button {
             width: 100%;
             padding: 0.5em;
             margin: 0.5em 0;
@@ -29,12 +30,9 @@
             border-radius: 4px;
         }
         button {
-            width: 60%;
-            padding: 0.1;
             background-color: #333;
             color: #fff;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
         }
         button:hover {
@@ -43,22 +41,18 @@
     </style>
 </head>
 <body>
-    <div class="update-container">
-        <h2>Get Banner</h2>
-        <form action="/user_banner" method="get">
-            <label for="tag_id">Tag ID</label>
-            <input type="number" name="tag_id" id="banner_id" required>
-            <label for="feature_id">Feature ID</label>
-            <input type="number" name="feature_id" id="feature_id">
-            
-            
-            <button type="submit">Get</button>
+    <div class="form-container">
+        <h2>Delete Banner</h2>
+        <form action="/deleteBanner" method="post">
+            <input type="text" name="tag_name" placeholder="Banner ID" required>
+            <button type="submit">Delete</button>
         </form>
-       
-         </form>
-         <form action="/logout" method="get">
+           <form action="/admin" method="get">
+            <button type="submit">Back</button>
+        </form>
+        <form action="/logout" method="get">
             <button type="submit">Logout</button>
-        </form>
+             </form>
     </div>
 </body>
 </html>
