@@ -14,15 +14,11 @@ It is a public repo for improving my Golang skills. This project used for new te
 Баннеры являются вспомогательным функционалом, допускается получение устаревшей информации.
 Для некоторых пользователей необходимо предусмотреть механизм получения информации напрямую из БД.
 
-Текущая схема БД.
-
-![image](https://github.com/user-attachments/assets/a7faf2c9-3e1a-459e-aa48-c164e0423ea2)
-
 Текущий стек и технологии:
-Go 1.21.3
-HTML
-SQL
-SQLite3
-JWT
-Salt, argon2
-Chi-router/middleware
+-Go 1.21.3
+-HTML
+-SQL
+-SQLite3
+-JWT
+-Salt, argon2
+-Chi-router/middleware
