@@ -2,23 +2,28 @@ package sqlite
 
 import (
 	banner "BannerService/cmd/internal/http-server/handlers/url/banner"
+	"database/sql"
+	//"BannerService/cmd/internal/http-server/handlers/url/feature"
 	"BannerService/cmd/internal/storage"
 	"fmt"
 
 	"github.com/mattn/go-sqlite3"
 )
 
-
-
-func (s *Storage) CreateBanner(req banner.CreateRequest) (int64, error) {
+func (s *Storage) CreateBanner(feature_id int64, tag_ids []int64, title string, content string, url string, is_active string) (int64, error) {
 	const op = "storage.sqlite.CreateBanner"
-
-	//INSERT INTO Content TABLE
-	stmt, err := s.db.Prepare("INSERT INTO Content(title, text, url) VALUES(?, ?, ?)")
+	tx, err := s.db.Begin()
 	if err != nil {
 		return 0, fmt.Errorf("%s:%w", op, err)
 	}
-	res, err := stmt.Exec(req.Content.Title, req.Content.Text, req.Content.URL)
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	res, err := s.CreateBannerContentStmt.Exec(title, content, url)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return 0, fmt.Errorf("%s:%w", op, storage.ErrURLExists)
@@ -30,12 +35,7 @@ func (s *Storage) CreateBanner(req banner.CreateRequest) (int64, error) {
 		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
 	}
 
-	//INSERT INTO Banner TABLE
-	stmt, err = s.db.Prepare("INSERT INTO Banner(banner_id,feature_id) VALUES(?,?)")
-	if err != nil {
-		return 0, fmt.Errorf("%s:%w", op, err)
-	}
-	_, err = stmt.Exec(id, req.Feature_id)
+	_, err = s.CreateBannerFeatureStmt.Exec(id, feature_id)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return 0, fmt.Errorf("%s:%w", op, storage.ErrURLExists)
@@ -44,12 +44,8 @@ func (s *Storage) CreateBanner(req banner.CreateRequest) (int64, error) {
 	}
 
 	//INSERT INTO TagBanner TABLE
-	stmt, err = s.db.Prepare("INSERT INTO TagBanner(tag_id,banner_id) VALUES(?,?)")
-	if err != nil {
-		return 0, fmt.Errorf("%s:%w", op, err)
-	}
-	for _, v := range req.Tag_ids {
-		_, err = stmt.Exec(v, id)
+	for _, tag_id := range tag_ids {
+		_, err = s.CreateTagBannerStmt.Exec(id, tag_id)
 		if err != nil {
 			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 				return 0, fmt.Errorf("%s:%w", op, storage.ErrURLExists)
@@ -58,32 +54,55 @@ func (s *Storage) CreateBanner(req banner.CreateRequest) (int64, error) {
 		}
 	}
 
+	if err = tx.Commit(); err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return 0, fmt.Errorf("%s:%w", op, err)
+	}
+
 	return id, nil
 }
 
-func (s *Storage) UpdateBanner(req banner.UpdateRequest) error {
+func (s *Storage) UpdateBanner(banner_id int64, tag_ids []int64, feature_id int64, title string, text string, url string, is_active string) error {
 	const op = "storage.sqlite.UpdateBanner"
+	tx, err := s.db.Begin()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 
 	switch {
-	case req.Tag_ids != nil:
-		s.UpdateTag(req.Banner_id, req.Tag_ids)
+	case len(tag_ids) != 0:
+
+		s.UpdateTag(&banner_id, tag_ids)
 		fallthrough
 
-	case req.Feature_id != nil:
-		s.UpdateFeature(req.Banner_id, req.Feature_id)
-		fallthrough
+	case feature_id != 0:
 
-	//INSERT INTO Content TABLE
-	case req.Content.Title != nil:
-
-		stmt, err := s.db.Prepare("UPDATE Content SET title = ? WHERE banner_id = ?")
-
+		_, err = s.UpdatBannerFeatureStmt.Exec(banner_id, feature_id)
 		if err != nil {
+			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				return fmt.Errorf("%s:%w", op, err)
+			}
 			return fmt.Errorf("%s:%w", op, err)
 		}
+		fallthrough
 
-		_, err = stmt.Exec(req.Content.Title, req.Banner_id)
+	case title != "":
 
+		_, err = s.UpdateBannerContentTitleStmt.Exec(title, banner_id)
+		if err != nil {
+			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				return fmt.Errorf("%s:%w", op, err)
+			}
+			return fmt.Errorf("%s:%w", op, err)
+		}
+		fallthrough
+
+	case text != "":
+
+		_, err = s.UpdateBannerContentTextStmt.Exec(text, banner_id)
 		if err != nil {
 			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 				return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
@@ -92,232 +111,152 @@ func (s *Storage) UpdateBanner(req banner.UpdateRequest) error {
 		}
 		fallthrough
 
-	case req.Content.Text != nil:
+	case url != "":
 
-		stmt, err := s.db.Prepare("UPDATE Content SET text = ? WHERE banner_id = ?")
-
-		if err != nil {
-			return fmt.Errorf("%s:%w", op, err)
-		}
-
-		_, err = stmt.Exec(req.Content.Text, req.Banner_id)
-
+		_, err = s.UpdateBannerContentURLStmt.Exec(url, banner_id)
 		if err != nil {
 			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 				return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
 			}
 			return fmt.Errorf("%s:%w", op, err)
 		}
-		fallthrough
 
-	case req.Content.URL != nil:
-
-		stmt, err := s.db.Prepare("UPDATE Content SET url = ? WHERE banner_id = ?")
-
-		if err != nil {
-			return fmt.Errorf("%s:%w", op, err)
-		}
-
-		_, err = stmt.Exec(req.Content.URL, req.Banner_id)
-
-		if err != nil {
-			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-				return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
-			}
-			return fmt.Errorf("%s:%w", op, err)
-		}
-		fallthrough
-	case req.Is_active != nil:
-		stmt, err := s.db.Prepare("UPDATE Content SET is_active = ? WHERE banner_id = ?")
-
-		if err != nil {
-			return fmt.Errorf("%s:%w", op, err)
-		}
-
-		_, err = stmt.Exec(req.Is_active, req.Banner_id)
-
-		if err != nil {
-			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-				return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
-			}
-			return fmt.Errorf("%s:%w", op, err)
-		}
-		return nil
 	default:
 		fmt.Println("unreachable sit")
+	}
+
+	_, err = s.UpdateBannerIsActiveStmt.Exec(is_active, banner_id)
+	if err != nil {
+		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return fmt.Errorf("%s:%w", op, err)
+		}
+		return fmt.Errorf("%s:%w", op, err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return fmt.Errorf("%s:%w", op, err)
 	}
 	return nil
 }
 
-func (s *Storage) GetBanner(req banner.GetBannerRequest) (banner.Content, error) {
+func (s *Storage) GetBanner(feature_id int64, tag_id int64) (string, string, string, string, error) {
+	const op = "storage.sqlite.GetBanner"
 
-	query := `
-        SELECT c.title, c.text, c.url
-        FROM Content c
-        INNER JOIN Banner b ON c.banner_id = b.banner_id
-        INNER JOIN TagBanner tb ON b.banner_id = tb.banner_id
-        WHERE tb.tag_id = ? AND b.feature_id = ?;
-    `
-	stmt, err := s.db.Query(query, req.Tag_id, req.Feature_id)
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	var res banner.Content
-
-	var title, text, url string
-
-	for stmt.Next() {
-		if err := stmt.Scan(&title, &text, &url); err != nil {
-			fmt.Println("db error")
+	tx, err := s.db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
 		}
+	}()
+
+	var title, text, url, is_active string
+
+	err = s.GetBannerStmt.QueryRow(tag_id, feature_id).Scan(&title, &text, &url, &is_active)
+	if err != nil {
+		tx.Rollback()
 	}
 
-	res.Title = &title
-	res.Text = &text
-	res.URL = &url
-
-	return res, nil
-
+	if err = tx.Commit(); err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return "", "", "", "", fmt.Errorf("%s:%w", op, err)
+	}
+	return title, text, url, is_active, nil
 }
 
-func (s *Storage) GetBanners(req banner.GetBannersRequest) ([]banner.GetBannersResponce, error) {
+func (s *Storage) GetBanners(feature_id int64, tag_id int64, limit int64, offset int64) ([]banner.GetBannersResponce, error) {
 	const op = "storage.sqlite.GetBanners"
 	_ = op //закинуть логгер
-	if req.Offset == nil {
-		*req.Offset = 1
-	}
 
-	if req.Limit == nil {
-		*req.Limit = 10
-	}
-
+	var rows *sql.Rows
+	var err error
 	var res banner.GetBannersResponce
-	ress := make([]banner.GetBannersResponce, 0, *req.Limit)
+	ress := make([]banner.GetBannersResponce, 0, limit)
+	
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("%s:%w", op, err)
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 
 	switch {
-	case req.Tag_id == nil && req.Feature_id == nil:
-		query := `SELECT
-    b.banner_id,
-    GROUP_CONCAT(tb.tag_id) AS tag_ids,
-    b.feature_id,
-    c.title,
-    c.text,
-    c.url,
-    c.version,
-    c.updated_at,
-    c.is_active
-	FROM Banner b
-	JOIN Content c ON b.banner_id = c.banner_id
-	LEFT JOIN TagBanner tb ON b.banner_id = tb.banner_id
-	GROUP BY b.banner_id, b.feature_id, c.title, c.text, c.url, c.version, c.updated_at, c.is_active
-	LIMIT ? OFFSET ?;`
-
-		rows, err := s.db.Query(query, req.Limit, req.Offset)
+	case feature_id !=0 && tag_id == 0:
+		rows,err = s.GetBannersByFeatureStmt.Query(feature_id, limit, offset)
 		if err != nil {
-			panic(err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			if err := rows.Scan(&res.Banner_id, &res.Tag_ids, &res.Feature_id, &res.Content.Title, &res.Content.Text, &res.Content.URL, &res.Is_active, &res.Created_at, &res.Updated_at); err != nil {
-				panic(err)
+			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				return nil, fmt.Errorf("%s:%w", op, err)
 			}
-			ress = append(ress, res)
+			return nil, fmt.Errorf("%s:%w", op, err)
 		}
+	defer rows.Close()
 
-		if err := rows.Err(); err != nil {
-			panic(err)
+	case feature_id ==0 && tag_id !=0:
+	rows,err = s.GetBannersByTagStmt.Query(tag_id, limit,offset)
+	if err != nil {
+		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return nil, fmt.Errorf("%s:%w", op, err)
 		}
-
-	case req.Feature_id != nil && req.Tag_id == nil:
-		query := `SELECT
-    b.banner_id,
-    GROUP_CONCAT(tb.tag_id) AS tag_ids,
-    c.title,
-    c.text,
-    c.url,
-    c.version,
-    c.updated_at,
-    c.is_active
-	FROM Banner b
-	JOIN Content c ON b.banner_id = c.banner_id WHERE b.feature_id = ?
-	LEFT JOIN TagBanner tb ON b.banner_id = tb.banner_id WHERE b.feature_id = ?
-	GROUP BY b.banner_id, b.feature_id, c.title, c.text, c.url, c.version, c.updated_at, c.is_active
-	LIMIT ? OFFSET ?;`
-
-		rows, err := s.db.Query(query, req.Feature_id, req.Limit, req.Offset)
-		if err != nil {
-			panic(err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			if err := rows.Scan(&res.Banner_id, &res.Tag_ids, &res.Feature_id, &res.Content.Title, &res.Content.Text, &res.Content.URL, &res.Is_active, &res.Created_at, &res.Updated_at); err != nil {
-				panic(err)
-			}
-			ress = append(ress, res)
-		}
-
-		if err := rows.Err(); err != nil {
-			panic(err)
-		}
-	case req.Feature_id == nil && req.Tag_id != nil:
-		query := `SELECT
-    b.banner_id,
-    GROUP_CONCAT(tb.tag_id) AS tag_ids,
-    b.feature_id,
-    c.title,
-    c.text,
-    c.url,
-    c.version,
-    c.updated_at,
-    c.is_active
-	FROM Banner b
-	JOIN Content c ON b.banner_id = c.banner_id
-	LEFT JOIN TagBanner tb ON b.banner_id = tb.banner_id
-	WHERE tb.tag_id = ?
-	GROUP BY b.banner_id, b.feature_id, c.title, c.text, c.url, c.version, c.updated_at, c.is_active
-	LIMIT ? OFFSET ?;
-	`
-
-		rows, err := s.db.Query(query, req.Tag_id, req.Limit, req.Offset)
-		if err != nil {
-			panic(err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			if err := rows.Scan(&res.Banner_id, &res.Tag_ids, &res.Feature_id, &res.Content.Title, &res.Content.Text, &res.Content.URL, &res.Is_active, &res.Created_at, &res.Updated_at); err != nil {
-				panic(err)
-			}
-			ress = append(ress, res)
-		}
-
-		if err := rows.Err(); err != nil {
-			panic(err)
-		}
+		return nil, fmt.Errorf("%s:%w", op, err)
+	}
+	
 	default:
-		fmt.Println("unreachable sit")
+		rows,err = s.GetBannersByTagStmt.Query(tag_id, limit,offset)
+		if err != nil {
+			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				return nil, fmt.Errorf("%s:%w", op, err)
+			}
+			return nil, fmt.Errorf("%s:%w", op, err)
+		}
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(&res.Banner_id, &res.Tag_ids, &res.Feature_id, &res.Content.Title, &res.Content.Text, &res.Content.URL, &res.Is_active, &res.Created_at, &res.Updated_at); err != nil {
+			panic(err)
+		}
+		ress = append(ress, res)
+	}
+
+	if err = tx.Commit(); err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return nil, fmt.Errorf("%s:%w", op, err)
 	}
 	return ress, nil
 }
 
-func (s *Storage) DeleteBanner(id int64) (banner.Response, error) {
-	var res banner.Response
+func (s *Storage) DeleteBanner(banner_id int64) (error) {
 	const op = "storage.sqlite.DeleteBanner"
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("%s:%w", op, err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
 
 	stmt, err := s.db.Prepare("DELETE FROM Content WHERE banner_id = ?")
 	if err != nil {
-		return res, fmt.Errorf("%s:%w", op, err)
+		return fmt.Errorf("%s:%w", op, err)
 	}
-	_, err = stmt.Exec(stmt, id)
+	_, err = stmt.Exec(stmt, banner_id)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			return res, fmt.Errorf("%s:%w", op, storage.ErrURLExists)
+			return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
 		}
-		return res, nil
+		return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
 	}
-	return res, nil
+	
+	if err = tx.Commit(); err != nil {
+		fmt.Println("Error committing transaction:", err)
+		return fmt.Errorf("%s:%w", op, err)
+	}
+	return nil
 }

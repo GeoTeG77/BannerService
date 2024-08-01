@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Banner</title>
+    <title>Get Banner</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,7 +30,7 @@
         }
         button {
             width: 60%;
-            padding: 0.1;
+            padding: 0.1em;
             background-color: #333;
             color: #fff;
             border: none;
@@ -47,16 +47,15 @@
         <h2>Get Banner</h2>
         <form action="/user_banner" method="get">
             <label for="tag_id">Tag ID</label>
-            <input type="number" name="tag_id" id="banner_id" required>
-            <label for="feature_id">Feature ID</label>
-            <input type="number" name="feature_id" id="feature_id">
+            <input type="number" name="tag_id" id="tag_id" step="1" required>
             
+            <label for="feature_id">Feature ID</label>
+            <input type="number" name="feature_id" id="feature_id" step="1" required>
             
             <button type="submit">Get</button>
         </form>
-       
-         </form>
-         <form action="/logout" method="get">
+        
+        <form action="/logout" method="get">
             <button type="submit">Logout</button>
         </form>
     </div>

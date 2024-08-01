@@ -2,18 +2,20 @@ package banner
 
 import (
 	resp "BannerService/cmd/internal/lib/api/response"
-	"BannerService/cmd/internal/lib/logger/sl"
+	"fmt"
+
+	//"BannerService/cmd/internal/lib/logger/sl"
 	templates "BannerService/cmd/internal/templates"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	//"os/exec"
 	"strconv"
 
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
-	"github.com/go-playground/validator/v10"
+	//"github.com/go-chi/render"
+	//"github.com/go-playground/validator/v10"
 )
 
 type Content struct {
@@ -25,15 +27,7 @@ type Content struct {
 type CreateRequest struct {
 	Tag_ids    []int64  `json:"tag_ids" validate:"required"`
 	Feature_id *int64   `json:"feature_id" validate:"required"`
-	Content    *Content `json:"content" validate:"required"`
-	Is_active  *bool    `json:"is_active" validate:"required"`
-}
-
-type UpdateRequest struct {
-	Banner_id  *int64   `json:"banner_id" validate:"required"`
-	Tag_ids    []int64  `json:"tag_ids" validate:"required"`
-	Feature_id *int64   `json:"feature_id,omitempty"`
-	Content    *Content `json:"content,omitempty"`
+	Content    *Content `json:"content"`
 	Is_active  *bool    `json:"is_active" validate:"required"`
 }
 
@@ -70,159 +64,182 @@ type Response struct {
 //go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name==ContentSaver
 
 type Banner interface {
-	CreateBanner(req CreateRequest) (int64, error)
-	UpdateBanner(req UpdateRequest) error
-	GetBanner(req GetBannerRequest) (Content, error)
-	GetBanners(req GetBannersRequest) ([]GetBannersResponce, error)
-	DeleteBanner(id int64) (Response, error)
+	CreateBanner(int64, []int64, string, string, string, string) (int64, error)
+	UpdateBanner(int64, []int64, int64, string, string, string, string) error
+	GetBanner(int64, int64) (string, string, string, string, error)
+	GetBanners(int64, int64, int64, int64) ([]GetBannersResponce, error)
+	DeleteBanner(id int64) (error)
 }
 
-func SetBannerPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := templates.Tmpl.ExecuteTemplate(w, "setBanner.html", nil)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-	}
-
-	//JSON и редерект в SET BANNER () POST /banner
-}
-
-func SetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
+func CreateBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.banner.CreateBanner"
 
+		const op = "handlers.url.banner.CreateBanner"
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 
-		var req CreateRequest
+		switch r.Method {
+		case http.MethodGet:
 
-		err := render.DecodeJSON(r.Body, &req)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			err := templates.Tmpl.ExecuteTemplate(w, "setBanner.html", nil)
+			if err != nil {
+				http.Error(w, "Unable to load template", http.StatusInternalServerError)
+			}
 
-		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, resp.Error("failed to decide request"))
-			return
-		}
+		case http.MethodPost:
 
-		log.Info("request body decoded", slog.Any("request", req))
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid form data", http.StatusBadRequest)
+				return
+			}
 
-		if err := validator.New().Struct(req); err != nil {
+			feature := r.FormValue("feature_id")
+			feature_id, err := strconv.ParseInt(feature, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+			}
 
-			validateErr := err.(validator.ValidationErrors)
+			tags := r.FormValue("tag_ids")
+			tag_ids := make([]int64, 0, 8)
+			tags = strings.ReplaceAll(tags, " ", "")
+			tagsString := strings.Split(tags, ",")
 
-			log.Error("invalid request", sl.Err(err))
+			for _, tag := range tagsString {
+				tagID, err := strconv.ParseInt(tag, 10, 64)
+				if err != nil {
+					http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+				}
+				tag_ids = append(tag_ids, tagID)
+			}
 
-			render.JSON(w, r, resp.Error("invalid request"))
-			render.JSON(w, r, resp.ValidationError(validateErr))
+			title := r.FormValue("title")
+			text := r.FormValue("text")
+			url := r.FormValue("url")
+			is_active := r.FormValue("is_active")
 
-			return
-		}
-		_, err = Banner.CreateBanner(BannerImpl, req)
-		if err != nil {
-			log.Error("failed")
+			_, err = Banner.CreateBanner(BannerImpl, feature_id, tag_ids, title, text, url, is_active)
+			if err != nil {
+				log.Error("failed")
+			}
 		}
 	}
 }
 
-// / Поправить UpdateBanner исправить через URL параметр и sqlite соответственно!!!!
-func UpdateBannerPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := templates.Tmpl.ExecuteTemplate(w, "update.html", nil)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-	}
-
-	//JSON и редерект в SET BANNER () POST /banner
-}
+// поправить TAGBannerUpdate
 
 func UpdateBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.UpdateBanner"
 
-		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
+		switch r.Method {
+		case http.MethodGet:
 
-		var req UpdateRequest
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			err := templates.Tmpl.ExecuteTemplate(w, "update.html", nil)
+			if err != nil {
+				http.Error(w, "Unable to load template", http.StatusInternalServerError)
+			}
 
-		err := render.DecodeJSON(r.Body, &req)
+		case http.MethodPost:
 
-		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, resp.Error("failed to decide request"))
-			return
-		}
+			log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 
-		log.Info("request body decoded", slog.Any("request", req))
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid form data", http.StatusBadRequest)
+				return
+			}
 
-		if err := validator.New().Struct(req); err != nil {
+			banner := r.FormValue("banner_id")
+			banner_id, err := strconv.ParseInt(banner, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+			}
 
-			validateErr := err.(validator.ValidationErrors)
+			tags := r.FormValue("tag_ids")
+			tag_ids := make([]int64, 0, 8)
+			if tags != "" {
+				tags = strings.ReplaceAll(tags, " ", "")
+				tagsString := strings.Split(tags, ",")
+				for _, tag := range tagsString {
+					tagID, err := strconv.ParseInt(tag, 10, 64)
+					if err != nil {
+						http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+					}
+					tag_ids = append(tag_ids, tagID)
+				}
+			}
 
-			log.Error("invalid request", sl.Err(err))
+			feature := r.FormValue("feature_id")
+			var feature_id int64
+			if feature != "" {
+				feature_id, err = strconv.ParseInt(feature, 10, 64)
+				if err != nil {
+					http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+				}
+			}
 
-			render.JSON(w, r, resp.Error("invalid request"))
-			render.JSON(w, r, resp.ValidationError(validateErr))
+			title := r.FormValue("title")
+			text := r.FormValue("text")
+			url := r.FormValue("url")
+			is_active := r.FormValue("is_active")
 
-			return
-		}
-
-		//Проверить
-		err = Banner.UpdateBanner(BannerImpl, req) // хз
-		if err != nil {
-			log.Error("failed")
+			//Проверить
+			err = Banner.UpdateBanner(BannerImpl, banner_id, tag_ids, feature_id, title, text, url, is_active) // хз
+			if err != nil {
+				log.Error("failed")
+			}
 		}
 	}
 }
 
-// / Поправить UpdateBanner исправить через URL параметр и sqlite соответственно!!!!
-func GetBannerPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := templates.Tmpl.ExecuteTemplate(w, "getBanner.html", nil)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-	}
-
-	//JSON и редерект в SET BANNER () POST /banner
-}
-
+// доделать redirect на форму ответа
 func GetBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.GetBanner"
-
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
-		var req GetBannerRequest
 
-		tag_id := r.URL.Query().Get("tag_id")
-		tag, err := strconv.Atoi(tag_id)
-		if err != nil {
-			log.Error("bad value")
+		switch r.Method {
+		case http.MethodGet:
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			err := templates.Tmpl.ExecuteTemplate(w, "getBanner.html", nil)
+			if err != nil {
+				http.Error(w, "Unable to load template", http.StatusInternalServerError)
+			}
+
+		case http.MethodPost:
+
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid form data", http.StatusBadRequest)
+				return
+			}
+
+			feature := r.FormValue("feature_id")
+			feature_id, err := strconv.ParseInt(feature, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid feature_id", http.StatusBadRequest)
+			}
+
+			tag := r.FormValue("tag_id")
+			tag_id, err := strconv.ParseInt(tag, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+			}
+
+			text, title, url, is_active, err := Banner.GetBanner(BannerImpl, feature_id, tag_id)
+			if err != nil {
+				log.Error("db error")
+			}
+			switch {
+			case is_active == "1":
+				//redirect for all
+				fmt.Println(text, title, url) //Cделать выдачу в форму выдачи!
+			case is_active == "0":
+				//redirect to admin
+			}
 		}
-		tag64 := int64(tag)
-		req.Tag_id = &tag64
-
-		feature_id := r.URL.Query().Get("feature_id")
-		feature, err := strconv.Atoi(feature_id)
-		if err != nil {
-			log.Error("bad value")
-		}
-		feature64 := int64(feature)
-		req.Tag_id = &feature64
-
-		res, err := Banner.GetBanner(BannerImpl, req)
-		if err != nil {
-			log.Error("db error")
-		}
-		_ = res //gg
-
 	}
-}
 
-func GetBannersPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := templates.Tmpl.ExecuteTemplate(w, "getBanners.html", nil)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-	}
-
-	//JSON и редерект в SET BANNER () POST /banner
 }
 
 func GetBanners(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
@@ -231,75 +248,114 @@ func GetBanners(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 
-		var req GetBannersRequest
+		switch r.Method {
+		case http.MethodGet:
 
-		tag_id := r.URL.Query().Get("tag_id")
-		tag, err := strconv.Atoi(tag_id)
-		if err != nil {
-			log.Error("bad value")
-		}
-		tag64 := int64(tag)
-		req.Tag_id = &tag64
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			err := templates.Tmpl.ExecuteTemplate(w, "getBanners.html", nil)
+			if err != nil {
+				http.Error(w, "Unable to load template", http.StatusInternalServerError)
+			}
 
-		feature_id := r.URL.Query().Get("feature_id")
-		feature, err := strconv.Atoi(feature_id)
-		if err != nil {
-			log.Error("bad value")
-		}
-		feature64 := int64(feature)
-		req.Tag_id = &feature64
+		case http.MethodPost:
 
-		limitt := r.URL.Query().Get("limit")
-		limit, err := strconv.Atoi(limitt)
-		if err != nil {
-			log.Error("bad value")
-		}
-		limit64 := int64(limit)
-		req.Limit = &limit64
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid form data", http.StatusBadRequest)
+				return
+			}
 
-		offsett := r.URL.Query().Get("offset")
-		offset, err := strconv.Atoi(offsett)
-		if err != nil {
-			log.Error("bad value")
-		}
-		offset64 := int64(offset)
-		req.Offset = &offset64
+			feature := r.FormValue("feature_id")
+			tag := r.FormValue("tag_id")
 
-		res, err := Banner.GetBanners(BannerImpl, req)
-		if err != nil {
-			log.Error("db error")
+			if feature == "" && tag == "" {
+				http.Error(w, "Unable to load template", http.StatusBadRequest)
+				return
+			}
+
+			var feature_id, tag_id, limit, offset int64
+			var err error
+
+			if feature != "" {
+				feature_id, err = strconv.ParseInt(feature, 10, 64)
+				if err != nil {
+					http.Error(w, "Invalid feature_id", http.StatusBadRequest)
+					return
+				}
+			} else {
+				feature_id = 0
+			}
+
+			if tag != "" {
+				tag_id, err = strconv.ParseInt(tag, 10, 64)
+				if err != nil {
+					http.Error(w, "Invalid tag_id", http.StatusBadRequest)
+				}
+			} else {
+				tag_id = 0
+			}
+
+			limitStr := r.FormValue("limit")
+			if limitStr == "" {
+				limit = 10
+			}
+
+			offsetStr := r.FormValue("offset")
+			if offsetStr == "" {
+				offset = 0
+			}
+
+			res := make([]GetBannersResponce, 0, limit)
+			_= res
+			res, err = Banner.GetBanners(BannerImpl, feature_id, tag_id, limit, offset)
+			if err != nil {
+				log.Error("db error")
+			}
+			
+			fmt.Println(res) //форма для вывода кучи баннеров
 		}
-		_ = res
 
 	}
-}
-
-func DeleteBannerPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := templates.Tmpl.ExecuteTemplate(w, "deleteBanner.html", nil)
-	if err != nil {
-		http.Error(w, "Unable to load template", http.StatusInternalServerError)
-	}
-
-	//JSON и редерект в SET BANNER () POST /banner
 }
 
 func DeleteBanner(log *slog.Logger, BannerImpl Banner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.banner.DeleteBanner"
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
-		id := chi.URLParam(r, "id")
-		limit, err := strconv.Atoi(id)
-		if err != nil {
-			log.Error("bad value")
-		}
-		id64 := int64(limit)
+		switch r.Method {
+		case http.MethodGet:
 
-		res, err := Banner.DeleteBanner(BannerImpl, id64)
-		if err != nil {
-			log.Error("db error")
-			_ = res
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			err := templates.Tmpl.ExecuteTemplate(w, "deleteBanner.html", nil)
+			if err != nil {
+				http.Error(w, "Unable to load template", http.StatusInternalServerError)
+			}
 
+		case http.MethodPost:
+
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid form data", http.StatusBadRequest)
+				return
+			}
+
+			banner := r.FormValue("banner_id")
+
+			var banner_id int64
+			var err error
+
+			if banner != "" {
+				banner_id, err = strconv.ParseInt(banner, 10, 64)
+				if err != nil {
+					http.Error(w, "Invalid feature_id", http.StatusBadRequest)
+					return
+				}
+			} else {
+				banner_id = 0
+			}
+
+			err = Banner.DeleteBanner(BannerImpl, banner_id)
+			if err != nil {
+				log.Error("db error")
+			}
 		}
 	}
 }

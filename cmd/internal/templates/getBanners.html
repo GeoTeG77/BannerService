@@ -51,11 +51,11 @@
 <body>
     <div class="form-container">
         <h2>Get Banners</h2>
-        <form action="/get-banners" method="post">
-            <input type="text" name="tag_id" placeholder="Tag ID" required>
-            <input type="text" name="feature_id" placeholder="Feature ID" required>
-            <input type="number" name="limit" placeholder="Limit" required>
-            <input type="number" name="offset" placeholder="Offset" required>
+        <form action="/get_banners" method="post">
+            <input type="number" name="tag_id" placeholder="Tag ID" step="1">
+            <input type="number" name="feature_id" placeholder="Feature ID" step="1">
+            <input type="number" name="limit" placeholder="Limit" step="1">
+            <input type="number" name="offset" placeholder="Offset" step="1">
             <button type="submit">Get Banners</button>
         </form>
         <form action="/admin" method="get">

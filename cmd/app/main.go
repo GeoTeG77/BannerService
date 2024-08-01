@@ -37,7 +37,7 @@ func main() {
 
 	templates.LoadTemplates()
 
-	storage, err := sqlite.New(cfg.StoragePath)
+	storage, err := sqlite.New(cfg.StoragePath, cfg.MaxIdleConns, cfg.MaxOpenConns, cfg.ConnMaxLifetime)
 	if err != nil {
 		log.Error("failed to init storage")
 		os.Exit(1)
@@ -56,36 +56,39 @@ func main() {
 	router.Post("/auth", password.CreateUser(log, storage))
 	router.Get("/auth", password.CheckPassword(log, storage))
 	router.Get("/logout", auth.Logout)
+	router.Post("/update_password", password.UpdatePassword(log,storage))
 
 	router.Route("/", func(r chi.Router) {
 		r.Use(auth.AuthMiddleware)
-		r.Use(middleware.SetHeader("Content-Type", "application/json"))
 		r.Use(middleware.Recoverer)
 		r.Use(middleware.URLFormat)
 
-		r.Get("/ban", banner.GetBannerPage)
 		r.Get("/user_banner", banner.GetBanner(log, storage))
+		r.Post("/user_banner", banner.GetBanner(log,storage))
 
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(role.IsAdmin)
 
 			r.Get("/", admin.AdminPage)
 
-			r.Post("/banner", banner.SetBanner(log, storage))
 			r.Post("/tag", tag.CreateTag(log, storage))
 			r.Post("/feature", feature.CreateFeature(log, storage))
+			r.Post("/create_banner", banner.CreateBanner(log, storage))
+			r.Post("/update_banner", banner.UpdateBanner(log, storage))
+			r.Post("/user_banner", banner.GetBanner(log,storage))
+			r.Post("/delete_banner", banner.DeleteBanner(log,storage))
+			r.Post("/banner", banner.GetBanners(log, storage))
 
 			r.Patch("/banner/{id}", banner.UpdateBanner(log, storage))
 			r.Patch("/feature/{id}/{name}", feature.UpdateFeatureName(log, storage))
 			r.Patch("/tag/{id}/{name}", tag.UpdateTagName(log, storage))
 
-			r.Get("/ban", banner.GetBannerPage)
 			r.Get("/user_banner", banner.GetBanner(log, storage))
-			r.Get("/set_banner", banner.SetBannerPage)
-			r.Get("/delete_banner", banner.DeleteBannerPage)
-			r.Get("/update_banner", banner.UpdateBannerPage)
+			r.Get("/create_banner", banner.CreateBanner(log, storage))
+			r.Get("/delete_banner", banner.DeleteBanner(log,storage))
+			r.Get("/update_banner", banner.UpdateBanner(log, storage))
 			r.Get("/banner", banner.GetBanners(log, storage))
-			r.Get("/banners", banner.GetBannersPage)
+	
 
 			r.Delete("/banner/{id}", banner.DeleteBanner(log, storage))
 			r.Delete("/tag/{id}", tag.DeleteTag(log, storage))

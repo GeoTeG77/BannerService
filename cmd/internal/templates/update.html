@@ -30,7 +30,7 @@
         }
         button {
             width: 60%;
-            padding: 0.1;
+            padding: 0.1em;
             background-color: #333;
             color: #fff;
             border: none;
@@ -45,15 +45,15 @@
 <body>
     <div class="update-container">
         <h2>Update Banner</h2>
-        <form action="/update-banner" method="post">
+        <form action="/update_banner" method="post">
             <label for="banner_id">Banner ID</label>
-            <input type="number" name="banner_id" id="banner_id" required>
+            <input type="number" name="banner_id" id="banner_id" step="1" required>
             
-            <label for="tag_ids">Tag IDs (comma-separated)</label>
-            <input type="text" name="tag_ids" id="tag_ids" required>
+            <label for="tag_ids">Tag IDs (comma-separated):</label>
+            <input type="text" id="tag_ids" name="tag_ids" pattern="\d+(,\d+)*" title="Comma-separated list of integers" required>
             
             <label for="feature_id">Feature ID</label>
-            <input type="number" name="feature_id" id="feature_id">
+            <input type="number" name="feature_id" id="feature_id" step="1" required>
             
             <h3>Content</h3>
             <label for="title">Title</label>
@@ -73,11 +73,10 @@
             
             <button type="submit">Update Banner</button>
         </form>
-         <form action="/" method="get">
+        <form action="/" method="get">
             <button type="submit">Back to Main</button>
         </form>
-         </form>
-         <form action="/logout" method="get">
+        <form action="/logout" method="get">
             <button type="submit">Logout</button>
         </form>
     </div>

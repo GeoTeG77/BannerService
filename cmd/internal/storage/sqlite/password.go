@@ -53,6 +53,6 @@ func (s *Storage) CreateUser(username string, password_hash string, salt string,
 	return nil
 }
 
-func (s *Storage) ChangePassword(username string, password_hash string, salt string) error {
+func (s *Storage) UpdatePassword(username string, password_hash string, salt string) error {
 	return nil
 }

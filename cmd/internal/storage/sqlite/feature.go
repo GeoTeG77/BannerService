@@ -7,23 +7,6 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-func (s *Storage) UpdateFeature(banner_id *int64, feature_id *int64) error {
-	const op = "storage.sqlite.UpdateBanner.feature_id"
-	stmt, err := s.db.Prepare("UPDATE Banner SET feature_id = ? WHERE banner_id = ?")
-	if err != nil {
-		return fmt.Errorf("%s:%w", op, err)
-	}
-
-	_, err = stmt.Exec(op, feature_id, banner_id)
-
-	if err != nil {
-		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			return fmt.Errorf("%s:%w", op, storage.ErrURLExists)
-		}
-		return fmt.Errorf("%s:%w", op, err)
-	}
-	return nil
-}
 
 func (s *Storage) CreateFeature(feature_name string) (int64, error) {
 	const op = "storage.sqlite.CreateFeature"

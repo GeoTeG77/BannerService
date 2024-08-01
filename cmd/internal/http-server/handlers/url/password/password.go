@@ -38,7 +38,7 @@ type User struct {
 type PasswordManager interface {
 	CheckPassword(username string) (string, string, string, string, error)
 	CreateUser(username string, password_hash string, salt string, isAdmin string, useLastRevision string) error
-	ChangePassword(username string, password_hash string, salt string) error
+	UpdatePassword(username string, password_hash string, salt string) error
 }
 
 func CheckPassword(log *slog.Logger, PasswordManager PasswordManager) http.HandlerFunc {
@@ -93,6 +93,7 @@ func CreateUser(log *slog.Logger, PasswordManager PasswordManager) http.HandlerF
 		const op = "handlers.url.PasswordManager.CreateUser"
 		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
 		var data User
+		
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -114,6 +115,14 @@ func CreateUser(log *slog.Logger, PasswordManager PasswordManager) http.HandlerF
 	}
 }
 
+func UpdatePassword(log *slog.Logger, PasswordManager PasswordManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "handlers.url.PasswordManager.UpdatePassword"
+		log = log.With(slog.String("op", op), slog.String("request_id", middleware.GetReqID(r.Context())))
+		
+
+	}
+}
 
 func generateSalt() (string, error) {
 	salt := make([]byte, 16)

@@ -29,7 +29,7 @@ func (s *Storage) CreateTag(tag_name string) (int64, error) {
 // нужно переделать!!! апдейт тэг
 func (s *Storage) UpdateTag(banner_id *int64, tag_ids []int64) error {
 	const op = "storage.sqlite.UpdateBanner.Tags_ids"
-	stmt, err := s.db.Prepare("UPDATE Content SET tag_ids = ? WHERE banner_id = ?")
+	stmt, err := s.db.Prepare("UPDATE BannerTag SET tag_ids = ? WHERE banner_id = ?")
 	if err != nil {
 		return fmt.Errorf("%s:%w", op, err)
 	}
